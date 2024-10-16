@@ -1,53 +1,118 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdbool.h>
 
-#define contactsLimit 50
+#define contactsLimit 100
+#define defaultSizeLimit 100 + 1
+
 
 typedef struct contact
 {
-    char name[100 + 1];
-    char number[100 + 1]; 
+    char name[defaultSizeLimit];
+    char number[defaultSizeLimit]; 
 } contact;
 
-bool tryReadContacts(contact *contacts);
+int readContacts(contact *contacts);
+void printfContacts(contact *contacts, int arraySize);
+contact contactCtor(char name[], char number[]);
+bool isContactValidFormat(char name[], char number[]);
 
 int main(int argc, char *argv[])
 {
     contact contacts[contactsLimit];
 
-    bool success = tryReadContacts(contacts);
-    if (!success)
+    int contactsCount = readContacts(contacts);
+    if (contactsCount == 0)
     {
         printf("Reading contacts was not successful.");
+    }
+
+    if (argc == 2)
+    {
+        char input[defaultSizeLimit];
+        strcpy(input, argv[1]);
+
+        printfContacts(contacts, contactsCount);
+        // do
+        
+    }
+    else if (argc == 1)
+    {
+        printfContacts(contacts, contactsCount);
     }
     
     return 0;
 }
 
-bool tryReadContacts(contact *contacts)
+int readContacts(contact *contacts)
 {
     for (int userIndex = 0; userIndex < contactsLimit - 1; userIndex++) // TODO: test size
     {
-        char name[101], number[101];
+        char name[defaultSizeLimit], number[defaultSizeLimit];
 
         int scanfResult = scanf("%100[^\n]\n%100[^\n]\n", name, number);
         if (scanfResult == EOF)
         {
-            break;
+            int contactsCount = userIndex; // no contact was added current iteration.
+            return contactsCount;
         }
         if (scanfResult != 2)
         {
             printf("Invalid input format.\n");
-            return false;
+            return 0;
         }
 
-        contact newContact;
-        strcpy(newContact.name, name);
-        strcpy(newContact.number, number);
+        bool isValid = isContactValidFormat(name, number);
+
+        if (!isValid) // TODO is contact input invalid or whole inpuit is invalid?
+        {
+            continue;
+        }
+
+        contact newContact = contactCtor(name, number);
 
         contacts[userIndex] = newContact;
-        printf("%s, %s\n", contacts[userIndex].name, contacts[userIndex].number);
     }
+    printf("Unsupported contacts input lenght.");
+    return 0;
+}
+
+bool isContactValidFormat(char name[], char number[])
+{
+    if (strlen(name) > 100 || strlen(number) > 100) // TODO: strlen is never > 100
+    {
+        return false;
+    }
+
+    bool isNumberNumeric = true;
+    for (int i = 0; i < strlen(number); i++)
+    {
+        if (!isdigit((int)number[i]))
+        {
+            isNumberNumeric = false;
+        }
+    }
+    if (!isNumberNumeric) 
+        return false;  
+    
     return true;
+}
+
+
+contact contactCtor(char name[], char number[])
+{
+    contact newContact;
+    strcpy(newContact.name, name);
+    strcpy(newContact.number, number);
+
+    return newContact;
+}
+
+void printfContacts(contact *contacts, int arraySize)
+{
+    for (int i = 0; i < arraySize; i++)
+    {
+        printf("%s, %s\n", contacts[i].name, contacts[i].number); // TODO: \n na konci?
+    }
 }
