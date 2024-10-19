@@ -207,16 +207,3 @@ bool isMatchingStrictOrder(char *string, char *filter) // TODO: naming
 
     return false;
 }
-
-bool isContactInArray(contact c, contact *contacts, int contactsSize)
-{
-    for (int i = 0; i < contactsSize; i++)
-    {
-        if (c.string == contacts[i].string && c.number == contacts[i].number)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
