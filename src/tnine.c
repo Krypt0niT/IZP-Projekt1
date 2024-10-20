@@ -9,19 +9,20 @@
 
 const char tNine[10][5] = {"+", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"}; 
 
-typedef struct contact
+typedef struct Scontact
 {
     char string[defaultSizeLimit];
     char number[defaultSizeLimit]; 
 } contact;
 
-int readContacts(contact *contacts);
-void printfContacts(contact *contacts, int arraySize);
 contact contactCtor(char string[], char number[]);
+int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter, bool strictFiltration);
+int readContacts(contact *contacts);
 bool isContactValidFormat(char string[], char number[]);
 bool isWithinKey(char item, char key);
-int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter);
-bool isMatchingStrictOrder(char string[], char *filter);
+bool isMatchingFilter(char *string, char *filter, bool strictFiltration);
+bool setValidInput(char input[], char consoleArgument[]);
+void printfContacts(contact *contacts, int arraySize);
 
 int main(int argc, char *argv[])
 {
@@ -30,29 +31,47 @@ int main(int argc, char *argv[])
     int contactsCount = readContacts(contacts);
     if (contactsCount == 0)
     {
-        printf("Reading contacts was not successful.");
-        return 1; // TODO: code
+        fprintf(stderr, "Reading contacts was not successful.");
+        return 1;
     }
+
+    char inputFilter[defaultSizeLimit];
+    contact filteredContacts[contactsLimit];
+    int filteredItemsCount = 0;
 
     if (argc == 2)
     {
-        char input[defaultSizeLimit];
-        strcpy(input, argv[1]); // TODO: format
+        bool result = setValidInput(inputFilter, argv[1]);
+        if (!result) return 2;
 
-        contact filtered[contactsLimit];
-
-        int filteredItemsCount = filterContacts(contacts, contactsCount, filtered, input);
-        printfContacts(filtered, filteredItemsCount);
-        
-        if (filteredItemsCount == 0)
-        {
-            printf("Not found");
-        }
-
+        filteredItemsCount = filterContacts(contacts, contactsCount, filteredContacts, inputFilter, (bool)true);
     }
-    else if (argc == 1)
+    else if (argc == 3)
+    {
+        if (strcmp(argv[1], "-s") == 0)
+        {
+            bool result = setValidInput(inputFilter, argv[2]);
+            if (!result) return 2;
+
+            filteredItemsCount = filterContacts(contacts, contactsCount, filteredContacts, inputFilter, (bool)false);
+        }
+        else
+        {
+            fprintf(stderr, "Unsupported input filter tag: '%s'", argv[1]);
+            return 3;
+        }
+    }
+    else
     {
         printfContacts(contacts, contactsCount);
+        return 0;
+    }
+
+    printfContacts(filteredContacts, filteredItemsCount);
+        
+    if (filteredItemsCount == 0)
+    {
+        printf("Not found\n");
     }
     
     return 0;
@@ -60,55 +79,43 @@ int main(int argc, char *argv[])
 
 int readContacts(contact *contacts)
 {
-    for (int userIndex = 0; userIndex < contactsLimit - 1; userIndex++) // TODO: test size
+    for (int userIndex = 0; userIndex < contactsLimit; userIndex++)
     {
-        char string[defaultSizeLimit], number[defaultSizeLimit];
+        char name[defaultSizeLimit], number[defaultSizeLimit];
 
-        int scanfResult = scanf("%100[^\n]\n%100[^\n]\n", string, number);
+        int scanfResult = scanf("%[^\n]\n%[^\n]\n", name, number); 
         if (scanfResult == EOF)
         {
             int contactsCount = userIndex; // no contact was added current iteration.
             return contactsCount;
         }
-        if (scanfResult != 2)
+        
+        bool isValid = isContactValidFormat(name, number);
+
+        if (scanfResult != 2 || !isValid)
         {
-            printf("Invalid input format.\n");
+            fprintf(stderr, "Invalid input format.\n");
             return 0;
         }
 
-        bool isValid = isContactValidFormat(string, number);
-        if (!isValid) // TODO is contact input invalid or whole inpuit is invalid?
-        {
-            continue;
-        }
-
-        contact newContact = contactCtor(string, number);
-
+        contact newContact = contactCtor(name, number);
         contacts[userIndex] = newContact;
     }
-    printf("Unsupported contacts input lenght.");
+    fprintf(stderr, "Unsupported contacts input lenght.");
     return 0;
 }
 
-bool isContactValidFormat(char string[], char number[])
+bool isContactValidFormat(char name[], char number[])
 {
-    if (strlen(string) > 100 || strlen(number) > 100) // TODO: strlen is never > 100
-    {
-        return false;
-    }
+    if (strlen(name) > 100 || strlen(number) > 100) return false;
 
-    bool isNumberNumeric = true;
+    bool isNumberValid = true;
     for (int i = 0; i < (int)strlen(number); i++)
     {
-        if (!isdigit((int)number[i]))
-        {
-            isNumberNumeric = false;
-        }
+        if (!isdigit((int)number[i]) || number[i] == '+')
+            isNumberValid = false;
     }
-    if (!isNumberNumeric) 
-    {
-        return false;  
-    }
+    if (!isNumberValid) return false;  
     
     return true;
 }
@@ -126,32 +133,27 @@ void printfContacts(contact *contacts, int arraySize)
 {
     for (int i = 0; i < arraySize; i++)
     {
-        printf("%s, %s\n", contacts[i].string, contacts[i].number); // TODO: \n na konci?
+        printf("%s, %s\n", contacts[i].string, contacts[i].number);
     }
 }
 
 bool isWithinKey(char item, char key)
 {
-    if (item == key)
-    {
-        return true;
-    }
+    if (item == key) return true;
+    
+    int keyNumericValue = key - '0';
 
-    char stringKey[] = { key };
-    int keyNumericValue = atoi(stringKey);
+    char lower = (char)tolower(item);
 
     for (int i = 0; i < (int)strlen(tNine[keyNumericValue]); i++)
     {
-        if (tNine[keyNumericValue][i] == item)
-        {
-            return true;
-        }
+        if (tNine[keyNumericValue][i] == lower) return true;
     }
 
     return false;
 }
 
-int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter)
+int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter, bool strictFiltration)
 {
     int filteredCount = 0;
 
@@ -159,8 +161,8 @@ int filterContacts(contact *contacts, int contactsCount, contact *filteredContac
     {
         contact c = contacts[i];
 
-        bool stringMatch = isMatchingStrictOrder(c.string, filter);
-        bool numberMatch = isMatchingStrictOrder(c.number, filter);
+        bool stringMatch = isMatchingFilter(c.string, filter, strictFiltration);
+        bool numberMatch = isMatchingFilter(c.number, filter, strictFiltration);
 
         if (stringMatch || numberMatch)
         {
@@ -172,7 +174,7 @@ int filterContacts(contact *contacts, int contactsCount, contact *filteredContac
     return filteredCount;
 }
 
-bool isMatchingStrictOrder(char *string, char *filter) // TODO: naming
+bool isMatchingFilter(char *string, char *filter, bool strictFiltration)
 {
     int filterLength = strlen(filter);
     int stringLength = strlen(string);
@@ -189,21 +191,37 @@ bool isMatchingStrictOrder(char *string, char *filter) // TODO: naming
         }
         else
         {
-            matchingCharacterCount = 0;
-            filterIndex = 0;
-            // TODO: comment functionality
-            if (isWithinKey(string[i], filter[0]))
+            if (strictFiltration)
             {
-                matchingCharacterCount = 1;
-                filterIndex = 1;
+                matchingCharacterCount = 0;
+                filterIndex = 0;
+                // TODO: comment functionality
+                // Even though character is not 
+                if (isWithinKey(string[i], filter[0]))
+                {
+                    matchingCharacterCount = 1;
+                    filterIndex = 1;
+                }
             }
         }
 
-        if (matchingCharacterCount == filterLength)
-        {
-            return true;
-        }        
+        if (matchingCharacterCount == filterLength) return true;
     }
 
     return false;
+}
+
+bool setValidInput(char input[], char consoleArgument[])
+{
+    for (int i = 0; i < (int)strlen(input); i++)
+    {
+        if (!isdigit(input[i])) 
+        {
+            fprintf(stderr, "Input filter was not in correct format.");
+            return false;
+        }
+    }
+    
+    strcpy(input, consoleArgument);
+    return true;
 }
