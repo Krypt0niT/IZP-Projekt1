@@ -7,7 +7,7 @@
 #define contactsLimit 100
 #define defaultSizeLimit 100 + 1
 
-const char tNine[10][5] = {"+", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"}; 
+const char tNine[10][5] = {"+", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
 
 typedef struct Scontact
 {
@@ -16,11 +16,11 @@ typedef struct Scontact
 } contact;
 
 contact contactCtor(char string[], char number[]);
-int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter, bool strictFiltration);
+int filter(contact *contacts, int contactsSize, contact *matches, char *filter, bool strict);
 int readContacts(contact *contacts);
 bool isContactValidFormat(char string[], char number[]);
 bool isWithinKey(char item, char key);
-bool isMatchingFilter(char *string, char *filter, bool strictFiltration);
+bool isMatchingFilter(char *string, char *filter, bool strict);
 bool setValidInput(char input[], char consoleArgument[]);
 void printfContacts(contact *contacts, int arraySize);
 
@@ -28,23 +28,24 @@ int main(int argc, char *argv[])
 {
     contact contacts[contactsLimit];
 
-    int contactsCount = readContacts(contacts);
-    if (contactsCount == 0)
+    int contactsSize = readContacts(contacts);
+    if (contactsSize == 0)
     {
         fprintf(stderr, "Reading contacts was not successful.");
         return 1;
     }
 
     char inputFilter[defaultSizeLimit];
-    contact filteredContacts[contactsLimit];
-    int filteredItemsCount = 0;
+
+    contact matches[contactsLimit];
+    int matchesCount = 0;
 
     if (argc == 2)
     {
         bool result = setValidInput(inputFilter, argv[1]);
         if (!result) return 2;
 
-        filteredItemsCount = filterContacts(contacts, contactsCount, filteredContacts, inputFilter, (bool)true);
+        matchesCount = filter(contacts, contactsSize, matches, inputFilter, (bool)true);
     }
     else if (argc == 3)
     {
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
             bool result = setValidInput(inputFilter, argv[2]);
             if (!result) return 2;
 
-            filteredItemsCount = filterContacts(contacts, contactsCount, filteredContacts, inputFilter, (bool)false);
+            matchesCount = filter(contacts, contactsSize, matches, inputFilter, (bool)false);
         }
         else
         {
@@ -63,17 +64,20 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printfContacts(contacts, contactsCount);
+        printfContacts(contacts, contactsSize);
         return 0;
     }
 
-    printfContacts(filteredContacts, filteredItemsCount);
-        
-    if (filteredItemsCount == 0)
+
+    if (matchesCount != 0)
+    {
+        printfContacts(matches, matchesCount);
+    }
+    else
     {
         printf("Not found\n");
     }
-    
+
     return 0;
 }
 
@@ -86,10 +90,10 @@ int readContacts(contact *contacts)
         int scanfResult = scanf("%[^\n]\n%[^\n]\n", name, number); 
         if (scanfResult == EOF)
         {
-            int contactsCount = userIndex; // no contact was added current iteration.
-            return contactsCount;
+            int contactsSize = userIndex; // no contact was added current iteration.
+            return contactsSize;
         }
-        
+
         bool isValid = isContactValidFormat(name, number);
 
         if (scanfResult != 2 || !isValid)
@@ -112,11 +116,11 @@ bool isContactValidFormat(char name[], char number[])
     bool isNumberValid = true;
     for (int i = 0; i < (int)strlen(number); i++)
     {
-        if (!isdigit((int)number[i]) || number[i] == '+')
+        if (!isdigit((int)number[i]))
             isNumberValid = false;
     }
-    if (!isNumberValid) return false;  
-    
+    if (!isNumberValid) return false;
+
     return true;
 }
 
@@ -140,8 +144,8 @@ void printfContacts(contact *contacts, int arraySize)
 bool isWithinKey(char item, char key)
 {
     if (item == key) return true;
-    
-    int keyNumericValue = key - '0';
+
+    int keyNumericValue = key - '0'; // Substract starting index for numbers in ASCII.
 
     char lower = (char)tolower(item);
 
@@ -153,35 +157,35 @@ bool isWithinKey(char item, char key)
     return false;
 }
 
-int filterContacts(contact *contacts, int contactsCount, contact *filteredContacts, char *filter, bool strictFiltration)
+int filter(contact *contacts, int contactsSize, contact *matches, char *filter, bool strict)
 {
-    int filteredCount = 0;
+    int matchesCount = 0;
 
-    for (int i = 0; i < contactsCount; i++)
+    for (int i = 0; i < contactsSize; i++)
     {
         contact c = contacts[i];
 
-        bool stringMatch = isMatchingFilter(c.string, filter, strictFiltration);
-        bool numberMatch = isMatchingFilter(c.number, filter, strictFiltration);
+        bool stringMatch = isMatchingFilter(c.string, filter, strict);
+        bool numberMatch = isMatchingFilter(c.number, filter, strict);
 
         if (stringMatch || numberMatch)
         {
-            filteredContacts[filteredCount] = c;
-            filteredCount++;
+            matches[matchesCount] = c;
+            matchesCount++;
         }
     }
-    
-    return filteredCount;
+
+    return matchesCount;
 }
 
-bool isMatchingFilter(char *string, char *filter, bool strictFiltration)
+bool isMatchingFilter(char *string, char *filter, bool strict)
 {
     int filterLength = strlen(filter);
     int stringLength = strlen(string);
 
     int filterIndex = 0;
     int matchingCharacterCount = 0;
-    
+
     for (int i = 0; i < stringLength; i++)
     {
         if (isWithinKey(string[i], filter[filterIndex]))
@@ -191,12 +195,11 @@ bool isMatchingFilter(char *string, char *filter, bool strictFiltration)
         }
         else
         {
-            if (strictFiltration)
+            if (strict)
             {
                 matchingCharacterCount = 0;
                 filterIndex = 0;
-                // TODO: comment functionality
-                // Even though character is not 
+                // Even though character is not in sequence, it might be first in another
                 if (isWithinKey(string[i], filter[0]))
                 {
                     matchingCharacterCount = 1;
@@ -215,13 +218,13 @@ bool setValidInput(char input[], char consoleArgument[])
 {
     for (int i = 0; i < (int)strlen(input); i++)
     {
-        if (!isdigit(input[i])) 
+        if (!isdigit(input[i]))
         {
             fprintf(stderr, "Input filter was not in correct format.");
             return false;
         }
     }
-    
+
     strcpy(input, consoleArgument);
     return true;
 }
