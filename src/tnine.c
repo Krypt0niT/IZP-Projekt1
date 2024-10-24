@@ -1,3 +1,29 @@
+/*H**********************************************************************
+* FILENAME :        tnine.c
+*
+* DESCRIPTION :
+*       First project for IZP.
+*       
+*       Project filters contacts using 'tNine'.      
+*       You can set contacts limit at 'contactsLimit'. 
+*
+* NOTES :
+*       ERROR CODES:
+*           1 : Invalid input contacts format.
+*           2 : Invalid input filter. (Should only contain numeric characters.)
+*           3 : Failed attempt for special filter use. 
+*               First argument should be '-s' and second should be valid input filter.
+*
+*       CONTACT FORMAT:
+*           Repository contains 'seznam.txt' with example of correct contacts format. 
+*
+* AUTHOR :    Lukas Uradnik        START DATE :    17.10.2024
+*
+* GITHUB REPOSITORY :
+*       URL : https://github.com/Krypt0niT/IZP-Projekt1
+*       CHANGE TO PUBLIC DATE : 26.10.2024
+*H*/
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -67,7 +93,6 @@ int main(int argc, char *argv[])
         printfContacts(contacts, contactsSize);
         return 0;
     }
-
 
     if (matchesCount != 0)
     {
